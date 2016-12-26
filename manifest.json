@@ -1,0 +1,22 @@
+{
+
+  "manifest_version": 2,
+  "name": "MarkPage",
+  "version": "1.0",
+
+  "description": "Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.",
+
+  "icons": {
+    "48": "icons/markpage-48.png"
+  },
+
+  "permissions": [
+    "activeTab"
+  ],
+
+  "browser_action": {
+    "default_icon": "icons/markpage-32.png",
+    "default_title": "MarkPage",
+    "default_popup": "popup/edit_mode.html"
+  }
+}
