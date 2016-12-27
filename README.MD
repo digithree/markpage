@@ -8,19 +8,22 @@ Highlight text on a webpage. Main planned feature is to save for later, both loc
 
 ## Why MarkPage?
 
-The concept is to allow for webpages to be highlighted in a simple way that does require rely on storage of webpage data so as to not infringe on copyright, and also to side step the technical obstacles of that approach.
+The concept is to allow for webpages to be highlighted in a simple way that does not rely on storage of webpage data so as to not infringe on copyright, and also to side step the technical obstacles of that approach.
 
 ## Feature roadmap
 
-1. (almost done) Text highlighting
-2. (no progress) Save highlights locally
+1. (in progress) Text highlighting
+2. (in progress) Save highlights locally
 3. (no progress) Save highlights remotely
 
 In detail
 
 ### Text highlighting
 
-Highlight text robustly, in the main body of text content for a webpage, in multiple colors.
+1. Highlight text robustly, in the main body of text content for a webpage, in multiple colors.
+2. Highlights should be editable only via a delete operation, to keep the interface as simple as possible.
+
+Perhaps we should allow comments to be added to highlights, or tags or other mark-up.
 
 ### Save highlights locally
 
@@ -58,18 +61,21 @@ Once installed you will see the [MarkPage logo](/icons/markpage-48.png) in your 
 ### Using
 
 Any text you select will be automatically highlighted, if it passes the two conditions:
+
 1. The total selected character count is 10 or more
 2. There are at least 2 spaces between words.
 
 These restrictions are intended to restrict usage to select sentences or sentence fragments.
 
-The highlight color will cycle through 5 different colours.
+The highlight color will cycle through 5 different colours automatically, for testing purposes, and is not editable or controllable.
 
 ## Known issues
 
 ### Text selection
 
 Mark.js uses a regex based system for highlighting or if there is an identical sentence existing to an intentionally highlighted one, it will also be highlighted. This is what the sentence restrictions are in place to combat.
+
+If there are overlapping you should expect undefined behaviour. This should probably be checked against and not allowed to occur.
 
 ## Acknowledgements
 
