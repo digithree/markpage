@@ -2,7 +2,7 @@
 
   "manifest_version": 2,
   "name": "MarkPage",
-  "version": "1.0",
+  "version": "0.1.1",
 
   "description": "Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.",
 
@@ -11,7 +11,12 @@
   },
 
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "tabs",
+    "*://*/*",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>"
   ],
 
   "browser_action": {

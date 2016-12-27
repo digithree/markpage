@@ -8,7 +8,7 @@
 
 
 /**
- * MarkPage v1.0
+ * MarkPage v0.2
  */
 
  var markedInstancesWrappers = [];
@@ -22,14 +22,29 @@
  ];
  var highlightColorIdx = 0;
 
+ var extractedContent;
+
 /*
 markpage():
 * marks content based on text selection events
 * actual event tie in not implemented yet
 */
 function markpage(request, sender, sendResponse) {
+  console.log("markpage script started in page");
+  console.log("response text: "+request.restext);
+  loadData(request.restext);
+  console.log("finished loading data");
   startEditMode();
   browser.runtime.onMessage.removeListener(markpage);
+}
+
+function loadData(data) {
+	var resJson = JSON.parse(data);
+	console.log("parsed response object");
+	var b64 = resJson.data;
+	console.log("Base64 data: "+b64);
+	var extractedContent = atob(b64);
+	console.log("Decoded base64 data: "+extractedContent);
 }
 
 /*
