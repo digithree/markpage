@@ -1,5 +1,7 @@
 # MarkPage
 
+v0.1.1
+
 <img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px; height: 200px"/>
 
 Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.
@@ -77,5 +79,11 @@ Loading spinner gif used is Ajax-loader.gif, obtained from [https://commons.wiki
 
 ## Changelog
 
+*16.12.27 - v0.1.1*
+
+- Integrate webpage content extraction service from [markpage-server](https://github.com/digithree/markpage-server) running at [https://markpage-server.herokuapp.com/](https://markpage-server.herokuapp.com/), working and responds with extracted content text. However is not integrated into plugin in any functional way yet
+- Add loading spinner on pop up after clicking start, while waiting for content extraction service to respond
+
 *16.12.26 - v0.1*
+
 - Create project
