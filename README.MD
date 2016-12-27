@@ -1,6 +1,6 @@
 # MarkPage
 
-<img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px;"/>
+<img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px; height: 200px"/>
 
 Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.
 
