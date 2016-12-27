@@ -73,6 +73,8 @@ Mark.js uses a regex based system for highlighting or if there is an identical s
 
 Highlighting is provided by Mark.js, which is included as part of the main content script file [markpage.js](/content_scripts/markpage.js), i.e. the JavaScript file injected into the webpage. Marj.js is under thew MIT license, same as this project.
 
+Loading spinner gif used is Ajax-loader.gif, obtained from [https://commons.wikimedia.org/wiki/File:Ajax-loader.gif](https://commons.wikimedia.org/wiki/File:Ajax-loader.gif) and licensed as public domain.
+
 ## Changelog
 
 *16.12.26 - v0.1*

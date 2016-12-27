@@ -1,29 +1,19 @@
 /*
-Listen for clicks in the popup.
+ * Listen for clicks in the popup.
+ * 
+ * Original code based on beastify.js WebExtension example, in tutorial
+ */
 
-If the click is on one of the beasts:
-  Inject the "beastify.js" content script in the active tab.
-
-  Then get the active tab and send "beastify.js" a message
-  containing the URL to the chosen beast's image.
-
-If it's on a button wich contains class "clear":
-  Reload the page.
-  Close the popup. This is needed, as the content script malfunctions after page reloads.
-*/
+var loadingImage = null;
 
 // execute the script now so it can listen to the messages sent by the code below
 browser.tabs.executeScript(null, { file: "/content_scripts/markpage.js" });
 
-
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("start")) {
-    //var chosenBeast = e.target.textContent;
-    //var chosenBeastURL = beastNameToURL(chosenBeast);
-
     var gettingActiveTab = browser.tabs.query({active: true, currentWindow: true});
     gettingActiveTab.then((tabs) => {
-      beginStart(tabs[0]);
+      beginStart(e.target, tabs[0]);
     });
   }
   else if (e.target.classList.contains("clear")) {
@@ -32,9 +22,9 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function beginStart(tab) {
+function beginStart(clickedElement, tab) {
+  addLoadingImage(clickedElement);
   console.log("MarkPage beginstart");
-  //var pageUrl = window.location.href;
   console.log(" - pageUrl = "+tab.url);
   var req = new XMLHttpRequest();
   if (req) {
@@ -42,15 +32,32 @@ function beginStart(tab) {
     console.log(" - marpage-server request url: GET "+url);
     req.open('GET', url, true);
     req.onload = function() {
+      removeLoadingImage(clickedElement);
       console.log(req.responseText);
       browser.tabs.sendMessage(tab.id, {message: "start", restext: req.responseText});
     };
     req.onerror = function() {
+      removeLoadingImage(clickedElement);
       alert("Failed to get webpage content!");
     }
     console.log("Created XMLHttpRequest, sending...");
     req.send();
   } else {
     console.log("!!! couldn't create XMLHttpRequest");
+  }
+}
+
+function addLoadingImage(element) {
+  removeLoadingImage(element);
+  element.innerHTML = "";
+  loadingImage = document.createElement("img");
+  loadingImage.src = "/icons/ajax-loader.gif";
+  element.appendChild(loadingImage);
+}
+
+function removeLoadingImage(element) {
+  if (loadingImage != null) {
+    element.removeChild(loadingImage);
+    element.innerHTML = "Start";
   }
 }
