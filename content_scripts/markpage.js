@@ -23,19 +23,40 @@
  var highlightColorIdx = 0;
 
  var extractedContent;
+ var cookieData;
 
 /*
-markpage():
+onMessage():
 * marks content based on text selection events
 * actual event tie in not implemented yet
 */
-function markpage(request, sender, sendResponse) {
-  console.log("markpage script started in page");
-  console.log("response text: "+request.restext);
-  loadData(request.restext);
-  console.log("finished loading data");
-  startEditMode();
-  browser.runtime.onMessage.removeListener(markpage);
+function message(request, sender, sendResponse) {
+  console.log("message: "+request.message);
+  if (request.message.localeCompare("start") == 0) {
+  	start(request);
+  } if (request.message.localeCompare("resetCookie") == 0) {
+  	resetCookie();
+  } else if (request.message.localeCompare("savedCookie") == 0) {
+  	cookieData = request.cookie;
+  	savedCookie(request.extra);
+  } else if (request.message.localeCompare("saveCookieError") == 0) {
+  	saveCookieError(request.extra);
+  } else if (request.message.localeCompare("updateCookie") == 0) {
+  	console.log("update cookie: "+JSON.stringify(request.cookie));
+  	cookieData = request.cookie;
+  } else {
+  	console.log(" - message, not understood");
+  }
+}
+
+function start(request) {
+	console.log("markpage script started in page");
+	console.log("response text: "+request.restext);
+  	loadData(request.restext);
+  	console.log("finished loading data");
+  	checkLocalData(request.url);
+  	startEditMode();
+  	browser.runtime.onMessage.removeListener(markpage);
 }
 
 function loadData(data) {
@@ -43,8 +64,39 @@ function loadData(data) {
 	console.log("parsed response object");
 	var b64 = resJson.data;
 	console.log("Base64 data: "+b64);
-	var extractedContent = atob(b64);
+	extractedContent = atob(b64);
 	console.log("Decoded base64 data: "+extractedContent);
+}
+
+function checkLocalData(url) {
+	var highlights = [];
+	if (cookieData != null) {
+		highlights = cookieData.highlights;
+		console.log("have cookie for this webpage: "+JSON.stringify(cookieData));
+	} else {
+		console.log("no local data for this webpage");
+	}
+	var hashedContent = generateContentHash();
+	console.log("genrated content hash using MD5 algorithm: "+hashedContent);
+	console.log(" - page url: "+url);
+	var sending = browser.runtime.sendMessage(
+			{
+				url: url,
+				message: "saveCookie", 
+				hashedContent: hashedContent,
+				highlights: highlights,
+				cookie: cookieData
+		});
+	sending.then(function(res) {
+		if (res.response.localeCompare("success") == 0) {
+			console.log("send saveCookie message from content script: "+res.message);
+		} else {
+			console.log("send saveCookie error (with success): "+res.message);
+		}
+	}, function(err) {
+		console.log("send saveCookie error: "+err.message);
+	})
+	console.log("sent update cookie event to background script");
 }
 
 /*
@@ -128,8 +180,223 @@ function captureTextIfExists() {
 	}
 }
 
+function resetCookie() {
+	alert("Page content has changed! Highlighting has been reset and saved highlight cannot be used in this version, please re-highlight. Note, highlight migration between content versions is planned feature, see https://github.com/digithree/markpage");
+	if (markedInstancesWrappers != null) {
+		for (var i = 0 ; i < markedInstancesWrappers.length ; i++) {
+			if (markedInstancesWrappers[i] != null) {
+				markedInstancesWrappers[i].unmark();
+			}
+		}
+		markedInstancesWrappers = [];
+	}
+}
+
+function savedCookie(extra) {
+	console.log("Highlighting saved locally to cookie! If you clear your cookies you will loose your highlights");
+	console.log("saved cookie with data: "+extra);
+}
+
+function saveCookieError(extra) {
+	console.log("Error saving information locally to cookie. You may need to enable cookies: "+extra);
+}
+
+
+function generateContentHash() {
+	if (extractedContent == null || extractedContent.length == 0) {
+		console.log("generateContentHash: no extractedContent available");
+		return "0";
+	}
+	console.log("generateContentHash: extractedContent length = "+extractedContent.length);
+	return calcMD5(extractedContent);
+}
 
 /*
-Assign markpage() as a listener for messages from the extension.
+Assign onMessage() as a listener for messages from the extension.
 */
-browser.runtime.onMessage.addListener(markpage);
+browser.runtime.onMessage.addListener(message);
+
+function getActiveTab() {
+  return browser.tabs.query({active: true, currentWindow: true});
+}
+
+
+/*
+ * The MD5 Hashing algorithm below was copied on 16.12.30 from http://www.queness.com/code-snippet/6523/generate-md5-hash-with-javascript
+ * The license as available at http://pajhome.org.uk/site/legal.html is copied here in full:
+ *
+ * The JavaScript code implementing the algorithm is derived from the C code in RFC 1321 and is covered by the following copyright:
+ * License to copy and use this software is granted provided that it is identified as the "RSA Data Security, Inc. MD5 Message-Digest Algorithm" in all material mentioning or referencing this software or this function.
+ * License is also granted to make and use derivative works provided that such works are identified as "derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm" in all material mentioning or referencing the derived work.
+ * RSA Data Security, Inc. makes no representations concerning either the merchantability of this software or the suitability of this software for any particular purpose. It is provided "as is" without express or implied warranty of any kind.
+ * These notices must be retained in any copies of any part of this documentation and/or software.
+ * This copyright does not prohibit distribution of the JavaScript MD5 code under the BSD license.
+ */
+
+/*
+ * A JavaScript implementation of the RSA Data Security, Inc. MD5 Message
+ * Digest Algorithm, as defined in RFC 1321.
+ * Copyright (C) Paul Johnston 1999 - 2000.
+ * Updated by Greg Holt 2000 - 2001.
+ * See http://pajhome.org.uk/site/legal.html for details.
+ */
+
+/*
+ * Convert a 32-bit number to a hex string with ls-byte first
+ */
+var hex_chr = "0123456789abcdef";
+function rhex(num) {
+  var str = "";
+  for(var j = 0 ; j <= 3 ; j++) {
+    str += hex_chr.charAt((num >> (j * 8 + 4)) & 0x0F) +
+           hex_chr.charAt((num >> (j * 8)) & 0x0F);
+  }
+  return str;
+}
+
+/*
+ * Convert a string to a sequence of 16-word blocks, stored as an array.
+ * Append padding bits and the length, as described in the MD5 standard.
+ */
+function str2blks_MD5(str) {
+  var nblk = ((str.length + 8) >> 6) + 1;
+  var blks = new Array(nblk * 16);
+  for (var i = 0 ; i < nblk * 16 ; i++) {
+  	blks[i] = 0;
+  }
+  for (var i = 0 ; i < str.length ; i++) {
+    blks[i >> 2] |= str.charCodeAt(i) << ((i % 4) * 8);
+  }
+  blks[i >> 2] |= 0x80 << ((i % 4) * 8);
+  blks[nblk * 16 - 2] = str.length * 8;
+  return blks;
+}
+
+/*
+ * Add integers, wrapping at 2^32. This uses 16-bit operations internally 
+ * to work around bugs in some JS interpreters.
+ */
+function add(x, y) {
+  var lsw = (x & 0xFFFF) + (y & 0xFFFF);
+  var msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+  return (msw << 16) | (lsw & 0xFFFF);
+}
+
+/*
+ * Bitwise rotate a 32-bit number to the left
+ */
+function rol(num, cnt) {
+  return (num << cnt) | (num >>> (32 - cnt));
+}
+
+/*
+ * These functions implement the basic operation for each round of the
+ * algorithm.
+ */
+function cmn(q, a, b, x, s, t) {
+  return add(rol(add(add(a, q), add(x, t)), s), b);
+}
+function ff(a, b, c, d, x, s, t) {
+  return cmn((b & c) | ((~b) & d), a, b, x, s, t);
+}
+function gg(a, b, c, d, x, s, t) {
+  return cmn((b & d) | (c & (~d)), a, b, x, s, t);
+}
+function hh(a, b, c, d, x, s, t) {
+  return cmn(b ^ c ^ d, a, b, x, s, t);
+}
+function ii(a, b, c, d, x, s, t) {
+  return cmn(c ^ (b | (~d)), a, b, x, s, t);
+}
+
+/*
+ * Take a string and return the hex representation of its MD5.
+ */
+function calcMD5(str) {
+  var x = str2blks_MD5(str);
+  var a =  1732584193;
+  var b = -271733879;
+  var c = -1732584194;
+  var d =  271733878;
+
+  for (var i = 0; i < x.length; i += 16) {
+    var olda = a;
+    var oldb = b;
+    var oldc = c;
+    var oldd = d;
+
+    a = ff(a, b, c, d, x[i+ 0], 7 , -680876936);
+    d = ff(d, a, b, c, x[i+ 1], 12, -389564586);
+    c = ff(c, d, a, b, x[i+ 2], 17,  606105819);
+    b = ff(b, c, d, a, x[i+ 3], 22, -1044525330);
+    a = ff(a, b, c, d, x[i+ 4], 7 , -176418897);
+    d = ff(d, a, b, c, x[i+ 5], 12,  1200080426);
+    c = ff(c, d, a, b, x[i+ 6], 17, -1473231341);
+    b = ff(b, c, d, a, x[i+ 7], 22, -45705983);
+    a = ff(a, b, c, d, x[i+ 8], 7 ,  1770035416);
+    d = ff(d, a, b, c, x[i+ 9], 12, -1958414417);
+    c = ff(c, d, a, b, x[i+10], 17, -42063);
+    b = ff(b, c, d, a, x[i+11], 22, -1990404162);
+    a = ff(a, b, c, d, x[i+12], 7 ,  1804603682);
+    d = ff(d, a, b, c, x[i+13], 12, -40341101);
+    c = ff(c, d, a, b, x[i+14], 17, -1502002290);
+    b = ff(b, c, d, a, x[i+15], 22,  1236535329);    
+
+    a = gg(a, b, c, d, x[i+ 1], 5 , -165796510);
+    d = gg(d, a, b, c, x[i+ 6], 9 , -1069501632);
+    c = gg(c, d, a, b, x[i+11], 14,  643717713);
+    b = gg(b, c, d, a, x[i+ 0], 20, -373897302);
+    a = gg(a, b, c, d, x[i+ 5], 5 , -701558691);
+    d = gg(d, a, b, c, x[i+10], 9 ,  38016083);
+    c = gg(c, d, a, b, x[i+15], 14, -660478335);
+    b = gg(b, c, d, a, x[i+ 4], 20, -405537848);
+    a = gg(a, b, c, d, x[i+ 9], 5 ,  568446438);
+    d = gg(d, a, b, c, x[i+14], 9 , -1019803690);
+    c = gg(c, d, a, b, x[i+ 3], 14, -187363961);
+    b = gg(b, c, d, a, x[i+ 8], 20,  1163531501);
+    a = gg(a, b, c, d, x[i+13], 5 , -1444681467);
+    d = gg(d, a, b, c, x[i+ 2], 9 , -51403784);
+    c = gg(c, d, a, b, x[i+ 7], 14,  1735328473);
+    b = gg(b, c, d, a, x[i+12], 20, -1926607734);
+    
+    a = hh(a, b, c, d, x[i+ 5], 4 , -378558);
+    d = hh(d, a, b, c, x[i+ 8], 11, -2022574463);
+    c = hh(c, d, a, b, x[i+11], 16,  1839030562);
+    b = hh(b, c, d, a, x[i+14], 23, -35309556);
+    a = hh(a, b, c, d, x[i+ 1], 4 , -1530992060);
+    d = hh(d, a, b, c, x[i+ 4], 11,  1272893353);
+    c = hh(c, d, a, b, x[i+ 7], 16, -155497632);
+    b = hh(b, c, d, a, x[i+10], 23, -1094730640);
+    a = hh(a, b, c, d, x[i+13], 4 ,  681279174);
+    d = hh(d, a, b, c, x[i+ 0], 11, -358537222);
+    c = hh(c, d, a, b, x[i+ 3], 16, -722521979);
+    b = hh(b, c, d, a, x[i+ 6], 23,  76029189);
+    a = hh(a, b, c, d, x[i+ 9], 4 , -640364487);
+    d = hh(d, a, b, c, x[i+12], 11, -421815835);
+    c = hh(c, d, a, b, x[i+15], 16,  530742520);
+    b = hh(b, c, d, a, x[i+ 2], 23, -995338651);
+
+    a = ii(a, b, c, d, x[i+ 0], 6 , -198630844);
+    d = ii(d, a, b, c, x[i+ 7], 10,  1126891415);
+    c = ii(c, d, a, b, x[i+14], 15, -1416354905);
+    b = ii(b, c, d, a, x[i+ 5], 21, -57434055);
+    a = ii(a, b, c, d, x[i+12], 6 ,  1700485571);
+    d = ii(d, a, b, c, x[i+ 3], 10, -1894986606);
+    c = ii(c, d, a, b, x[i+10], 15, -1051523);
+    b = ii(b, c, d, a, x[i+ 1], 21, -2054922799);
+    a = ii(a, b, c, d, x[i+ 8], 6 ,  1873313359);
+    d = ii(d, a, b, c, x[i+15], 10, -30611744);
+    c = ii(c, d, a, b, x[i+ 6], 15, -1560198380);
+    b = ii(b, c, d, a, x[i+13], 21,  1309151649);
+    a = ii(a, b, c, d, x[i+ 4], 6 , -145523070);
+    d = ii(d, a, b, c, x[i+11], 10, -1120210379);
+    c = ii(c, d, a, b, x[i+ 2], 15,  718787259);
+    b = ii(b, c, d, a, x[i+ 9], 21, -343485551);
+
+    a = add(a, olda);
+    b = add(b, oldb);
+    c = add(c, oldc);
+    d = add(d, oldd);
+  }
+  return rhex(a) + rhex(b) + rhex(c) + rhex(d);
+}

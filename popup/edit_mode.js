@@ -34,7 +34,7 @@ function beginStart(clickedElement, tab) {
     req.onload = function() {
       removeLoadingImage(clickedElement);
       console.log(req.responseText);
-      browser.tabs.sendMessage(tab.id, {message: "start", restext: req.responseText});
+      browser.tabs.sendMessage(tab.id, {message: "start", url: tab.url, restext: req.responseText});
     };
     req.onerror = function() {
       removeLoadingImage(clickedElement);
@@ -60,4 +60,24 @@ function removeLoadingImage(element) {
     element.removeChild(loadingImage);
     element.innerHTML = "Start";
   }
+}
+
+function getCookies(url) {
+  console.log("loadCookieData for url: "+url);
+  // get any previously set cookie for this webpage
+  var cookies = [];
+  var gettingCookies = browser.cookies.get({
+        url: url,
+        name: "markpage"
+      });
+  gettingCookies.then((cookie) => {
+      if (cookie) {
+        cookieData = JSON.parse(cookie.value);
+        console.log(" - got cookie");
+        cookies.push(cookieData);
+      } else {
+        console.log(" - got bad cookie");
+      }
+    });
+  return cookies;
 }
