@@ -2,26 +2,18 @@ function getActiveTab() {
   return browser.tabs.query({active: true, currentWindow: true});
 }
 
-/* Retrieve any previously set cookie and send to content script */
-
+/*
 browser.tabs.onUpdated.addListener(cookieUpdate);
 browser.tabs.executeScript(null, { file: "/content_scripts/markpage.js" });
 
 function cookieUpdate(tabId, changeInfo, tab) {
   getActiveTab().then((tabs) => {
-    // get any previously set cookie for the current tab 
-    var gettingCookies = browser.cookies.get({
-      url: tabs[0].url,
-      name: "markpage"
-    });
-    gettingCookies.then((cookie) => {
-      if(cookie) {
-        var cookieVal = JSON.parse(cookie.value);
-      	browser.tabs.sendMessage(tabs[0].id, {message: "updateCookie", cookie: cookieVal});
-      }
-    });
+  	returnMessage("updateData", "got data", getDataForUrl(tabs[0].url));
   }); 
 }
+*/
+
+
 
 
 /*
@@ -30,79 +22,52 @@ function cookieUpdate(tabId, changeInfo, tab) {
 function backgroundMessage(request, sender, sendResponse) {
 	//sendResponse({response: "error", message: "command not found"});
 	console.log("backgroundMessage, got message: "+request.message);
-	if (request.message.localeCompare("saveCookie") == 0) {
-		sendResponse({response: "success", message: "processing saveCookie command"});
-		var cookie = {};
-		if (request.cookie) {
-			cookie = request.cookie;
-			if (cookie.hashedContent != request.hashedContent) {
-				// page content has changed, reset everything
-				cookie.hashedContent = request.hashedContent;
-				cookie.highlights = [];
+	if (request.message.localeCompare("saveData") == 0) {
+		var data = request.data;
+		var exisitingData = getDataForUrl(data.url);
+		if (request.createIfNew) {
+			if (exisitingData != null) {
+				sendResponse({response: "success", message: "nothing to save, createIfNew not activiated as data is existing", data: exisitingData});
+				return;
+			}
+		} else if (exisitingData != null) {
+			if (exisitingData.hashedContent != data.hashedContent) {
+				// page content has changed, reset highlights
+				data.highlights = [];
 				// send message informing of reset
-				returnMessage("resetCookie");
+				updateData(data);
+				sendResponse({response: "reset data", message: "highlights reset", data: existingData});
 				// and do not continue
 				return;
-			} else {
-				// otherwise, update highlights only
-				cookie.highlights = request.highlights;
 			}
-		} else {
-			cookie = {
-				url: request.url,
-				hashedContent: request.hashedContent,
-				highlights: request.highlights
-			};
 		}
-		// save updated / new cookie
+		// save updated / new data
 		try {
-			var setCookie = browser.cookies.set({
-				url: request.url,
-				name: "markpage", 
-				value: JSON.stringify(cookie)
-			});
-			setCookie.then(function(res) {
-				returnMessage("savedCookie", JSON.stringify(cookie));
+			//sendResponse({response: "error", message: "could not save data"});
+			updateData(data, function() {
+				sendResponse({response: "success", message: "data saved", data: data});
 			}, function(err) {
-				returnMessage("saveCookieError", err.message);
+				sendResponse({response: "error", message: "could not save data, "+err.message});
 			});
 		} catch (err) {
-			console.log("error setting cookie: "+err.message);
-			returnMessage("saveCookieError");
+			sendResponse({response: "error", message: "could not save data, "+err.message});
 		}
+	} else if (request.message.localeCompare("getData") == 0) {
+		sendResponse({response: "success", message: "processing getData command", data: getDataForUrl(request.url)});
 	} else {
 		sendResponse({response: "error", message: "command not found"});
 	}
 }
 
-function returnMessage(message, extra, cookie) {
+/*
+function returnMessage(message, extra, data) {
     getActiveTab().then((tabs) => {
-      browser.tabs.sendMessage(tabs[0].id, {message: message, extra: extra, cookie: cookie});
+      browser.tabs.sendMessage(tabs[0].id, {message: message, extra: extra, data: data});
     });
 }
+*/
 
 /*
 Assign markpage() as a listener for messages from the extension.
 */
 browser.runtime.onMessage.addListener(backgroundMessage);
-
-
-function getCookies(url) {
-  console.log("loadCookieData for url: "+url);
-  // get any previously set cookie for this webpage
-  var cookies = [];
-  var gettingCookies = browser.cookies.get({
-        url: url,
-        name: "markpage"
-      });
-  gettingCookies.then((cookie) => {
-      if (cookie) {
-        cookieData = JSON.parse(cookie.value);
-        console.log(" - got cookie");
-        cookies.push(cookieData);
-      } else {
-        console.log(" - got bad cookie");
-      }
-    });
-  return cookies;
-}

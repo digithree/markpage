@@ -61,23 +61,3 @@ function removeLoadingImage(element) {
     element.innerHTML = "Start";
   }
 }
-
-function getCookies(url) {
-  console.log("loadCookieData for url: "+url);
-  // get any previously set cookie for this webpage
-  var cookies = [];
-  var gettingCookies = browser.cookies.get({
-        url: url,
-        name: "markpage"
-      });
-  gettingCookies.then((cookie) => {
-      if (cookie) {
-        cookieData = JSON.parse(cookie.value);
-        console.log(" - got cookie");
-        cookies.push(cookieData);
-      } else {
-        console.log(" - got bad cookie");
-      }
-    });
-  return cookies;
-}

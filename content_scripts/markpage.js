@@ -11,6 +11,8 @@
  * MarkPage v0.2
  */
 
+ var alphanumOnlyRegex = new RegExp("([^a-zA-Z0-9])+");
+
  var markedInstancesWrappers = [];
 
  var highlightColors = [
@@ -23,7 +25,7 @@
  var highlightColorIdx = 0;
 
  var extractedContent;
- var cookieData;
+ var currentData;
 
 /*
 onMessage():
@@ -34,16 +36,6 @@ function message(request, sender, sendResponse) {
   console.log("message: "+request.message);
   if (request.message.localeCompare("start") == 0) {
   	start(request);
-  } if (request.message.localeCompare("resetCookie") == 0) {
-  	resetCookie();
-  } else if (request.message.localeCompare("savedCookie") == 0) {
-  	cookieData = request.cookie;
-  	savedCookie(request.extra);
-  } else if (request.message.localeCompare("saveCookieError") == 0) {
-  	saveCookieError(request.extra);
-  } else if (request.message.localeCompare("updateCookie") == 0) {
-  	console.log("update cookie: "+JSON.stringify(request.cookie));
-  	cookieData = request.cookie;
   } else {
   	console.log(" - message, not understood");
   }
@@ -69,34 +61,63 @@ function loadData(data) {
 }
 
 function checkLocalData(url) {
-	var highlights = [];
-	if (cookieData != null) {
-		highlights = cookieData.highlights;
-		console.log("have cookie for this webpage: "+JSON.stringify(cookieData));
-	} else {
-		console.log("no local data for this webpage");
+	if (currentData != null) {
+		console.log("getting local data for this webpage");
+		getDataForUrl(url, function(data) {
+			if (data != null) {
+				currentData = data;
+				console.log(" - reloaded previously saved data: "+JSON.stringify(currentData));
+			} else {
+				console.log(" - data was not previously saved: "+JSON.stringify(currentData));
+			}
+		});
+		return;
 	}
 	var hashedContent = generateContentHash();
 	console.log("genrated content hash using MD5 algorithm: "+hashedContent);
 	console.log(" - page url: "+url);
-	var sending = browser.runtime.sendMessage(
-			{
-				url: url,
-				message: "saveCookie", 
-				hashedContent: hashedContent,
-				highlights: highlights,
-				cookie: cookieData
-		});
-	sending.then(function(res) {
-		if (res.response.localeCompare("success") == 0) {
-			console.log("send saveCookie message from content script: "+res.message);
+	currentData = {
+		url: url,
+		hashedContent: hashedContent,
+		highlights: []
+	};
+	getDataForUrl(url, function(data) {
+		console.log(" - got data");
+		if (data == null) {
+			console.log(" - first time data save: "+JSON.stringify(currentData));
+			updateData(currentData, function(err) {
+				console.log(" - error in save: "+err.message);
+			});
 		} else {
-			console.log("send saveCookie error (with success): "+res.message);
+			// TODO : check for hash change
+			currentData = data;
+			console.log(" - loaded previously saved data: "+JSON.stringify(currentData));
 		}
-	}, function(err) {
-		console.log("send saveCookie error: "+err.message);
-	})
-	console.log("sent update cookie event to background script");
+	});
+}
+
+function urlToCleanB64(url) {
+	return btoa(url).replace(alphanumOnlyRegex, "");
+}
+
+function getDataForUrl(url, onGot) {
+	console.log(" - - get data for url: "+url);
+	var key = urlToCleanB64(url);
+	console.log(" - - key: "+key);
+	var gettingItem = browser.storage.local.get(key);
+	console.log(" - - getting item object created");
+  	gettingItem.then((res) => {
+  		onGot(res[key]);
+  	});
+}
+
+function updateData(data, onError) {
+	console.log(" - - update data: "+JSON.stringify(data));
+	var jsonAsStr = "{\""+urlToCleanB64(data.url)+"\": "+JSON.stringify(data)+"}";
+	console.log(" - - jsonAsStr: "+jsonAsStr);
+	var jsonAsObj = JSON.parse(jsonAsStr);
+	var storing = browser.storage.local.set(jsonAsObj);
+	storing.then(null, onError);
 }
 
 /*
@@ -180,7 +201,7 @@ function captureTextIfExists() {
 	}
 }
 
-function resetCookie() {
+function resetData() {
 	alert("Page content has changed! Highlighting has been reset and saved highlight cannot be used in this version, please re-highlight. Note, highlight migration between content versions is planned feature, see https://github.com/digithree/markpage");
 	if (markedInstancesWrappers != null) {
 		for (var i = 0 ; i < markedInstancesWrappers.length ; i++) {
@@ -190,15 +211,6 @@ function resetCookie() {
 		}
 		markedInstancesWrappers = [];
 	}
-}
-
-function savedCookie(extra) {
-	console.log("Highlighting saved locally to cookie! If you clear your cookies you will loose your highlights");
-	console.log("saved cookie with data: "+extra);
-}
-
-function saveCookieError(extra) {
-	console.log("Error saving information locally to cookie. You may need to enable cookies: "+extra);
 }
 
 
