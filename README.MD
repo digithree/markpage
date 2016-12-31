@@ -1,6 +1,6 @@
 # MarkPage
 
-v0.1.1
+v0.2
 
 <img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px; height: 200px"/>
 
@@ -84,6 +84,10 @@ Highlighting is provided by Mark.js, which is included as part of the main conte
 Loading spinner gif used is Ajax-loader.gif, obtained from [https://commons.wikimedia.org/wiki/File:Ajax-loader.gif](https://commons.wikimedia.org/wiki/File:Ajax-loader.gif) and licensed as public domain.
 
 ## Changelog
+
+*16.12.31 - v0.2.0*
+- Save highlights to local storage (as reference to text position in extracted content only) and load from saved data
+- Local highlighting in a basic form is now complete, though the delete operation has yet to be implemented
 
 *16.12.31 - v0.1.2*
 - Implement local storage of webpage data, including url and extracted content hash, as well as highlight array which is not yet used

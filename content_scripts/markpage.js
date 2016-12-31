@@ -8,7 +8,7 @@
 
 
 /**
- * MarkPage v0.1
+ * MarkPage v0.2
  */
 
 /*
