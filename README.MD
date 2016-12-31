@@ -4,16 +4,20 @@ v0.3
 
 <img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px; height: 200px"/>
 
-Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.
+Create persistent webpage text highlights on a webpage in the simplest possible way. Designed for webapges which are articles, such as Wikipedia, newspapers, blogs, etc.
 
 ## Why MarkPage?
 
-The concept is to allow for webpages to be highlighted in a simple way that does not rely on storage of webpage data so as to not infringe on copyright, and also to side step the technical obstacles of that approach.
+The app concept is to allow for webpages to be highlighted in a simple way that does not rely on storage of webpage data so as to not infringe on copyright, and also to side step the technical obstacles of that approach.
+
+This feature is already part of some systems, but my approach is to respect copyright by not _directly_ copying any content locally, and to respect privacy by not storing any personally identifying information about users in the (planned) remote sync feature.
+
+I believe current solutions encourage infringement on copyright, and offer too many services I do not wish to use. To use a metaphor, I'd prefer to use a simple bicycle to get to the local shop, instead of an SUV.
 
 ## Feature roadmap
 
-1. (finished, basic) Text highlighting
-2. (finished, basic) Save highlights locally
+1. (basic) Text highlighting
+2. (basic) Save highlights locally
 3. (no progress) Save highlights remotely
 
 ### Text highlighting
