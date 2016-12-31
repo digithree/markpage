@@ -2,7 +2,7 @@
 
   "manifest_version": 2,
   "name": "MarkPage",
-  "version": "0.1.1",
+  "version": "0.1.2",
 
   "description": "Highlight text on a webpage. Main planned feature is to save for later, both locally and in anonymous store.",
 

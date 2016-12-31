@@ -85,6 +85,9 @@ Loading spinner gif used is Ajax-loader.gif, obtained from [https://commons.wiki
 
 ## Changelog
 
+*16.12.31 - v0.1.2*
+- Implement local storage of webpage data, including url and extracted content hash, as well as highlight array which is not yet used
+
 *16.12.27 - v0.1.1*
 
 - Integrate webpage content extraction service from [markpage-server](https://github.com/digithree/markpage-server) running at [https://markpage-server.herokuapp.com/](https://markpage-server.herokuapp.com/), working and responds with extracted content text. However is not integrated into plugin in any functional way yet
