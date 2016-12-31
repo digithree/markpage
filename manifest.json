@@ -24,9 +24,5 @@
     "default_icon": "icons/markpage-32.png",
     "default_title": "MarkPage",
     "default_popup": "popup/edit_mode.html"
-  },
-
-  "background": {
-    "scripts": ["background_scripts/background.js"]
   }
 }

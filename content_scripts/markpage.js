@@ -8,29 +8,36 @@
 
 
 /**
- * MarkPage v0.2
+ * MarkPage v0.1
  */
 
- var alphanumOnlyRegex = new RegExp("([^a-zA-Z0-9])+");
+/*
+ * Assign onMessage() as a listener for messages from the extension.
+ */
+browser.runtime.onMessage.addListener(message);
 
- var markedInstancesWrappers = [];
 
- var highlightColors = [
+var alphanumOnlyRegex = new RegExp("([^a-zA-Z0-9])+");
+
+var markedInstancesWrappers = [];
+
+var highlightColors = [
  	"#FF9999",
  	"#99FF99",
  	"#9999FF",
  	"#FF99FF",
  	"#99FFFF"
- ];
- var highlightColorIdx = 0;
+];
+var highlightColorIdx = 0;
 
- var extractedContent;
- var currentData;
+var extractedContent;
+
+var currentData;
+
 
 /*
-onMessage():
-* marks content based on text selection events
-* actual event tie in not implemented yet
+message():
+* Handles message posed to this content script via browser tab
 */
 function message(request, sender, sendResponse) {
   console.log("message: "+request.message);
@@ -41,6 +48,11 @@ function message(request, sender, sendResponse) {
   }
 }
 
+/*
+start(request):
+* Start up sequence, goes to edit mode after getting extract content
+* and checking for local data
+*/
 function start(request) {
 	console.log("markpage script started in page");
 	console.log("response text: "+request.restext);
@@ -51,85 +63,123 @@ function start(request) {
   	browser.runtime.onMessage.removeListener(markpage);
 }
 
+/*
+loadData(data):
+* Decoded extracted content from external web service and store in local variable
+*/
 function loadData(data) {
 	var resJson = JSON.parse(data);
-	console.log("parsed response object");
 	var b64 = resJson.data;
-	console.log("Base64 data: "+b64);
 	extractedContent = atob(b64);
-	console.log("Decoded base64 data: "+extractedContent);
 }
 
+/*
+checkLocalData(url):
+* First load check for any local data saved for this webpage by url, and
+* this extracted content.
+* Note that hash of extracted content is used as key in local storage
+*/
 function checkLocalData(url) {
+	if (extractedContent == null) {
+		console.log("can't check local data until webpage content is extracted");
+		return;
+	}
+	// check if we already have data
 	if (currentData != null) {
+		// if so just, get updated
 		console.log("getting local data for this webpage");
-		getDataForUrl(url, function(data) {
+		getData(currentData.hashedContent, function(data) {
 			if (data != null) {
 				currentData = data;
 				console.log(" - reloaded previously saved data: "+JSON.stringify(currentData));
 			} else {
-				console.log(" - data was not previously saved: "+JSON.stringify(currentData));
+				console.log(" - data was not previously saved, saving: "+JSON.stringify(currentData));
+				updateData(currentData.hashedContent, currentData, function(err) {
+					console.log(" - error in save: "+err.message);
+				});
 			}
 		});
-		return;
+	} else {
+		// else get data
+		// generate hash for content
+		var hashedContent = generateContentHash();
+		console.log("generated content hash using MD5 algorithm: "+hashedContent);
+		// check if we have something already saved
+		getData(hashedContent, function(data) {
+			console.log(" - got data");
+			if (data == null) {
+				// create data model object and save as is first time
+				currentData = {
+					url: url,
+					hashedContent: hashedContent,
+					highlights: []
+				};
+				console.log(" - first time data save: "+JSON.stringify(currentData));
+				updateData(hashedContent, currentData, function(err) {
+					console.log(" - error in save: "+err.message);
+				});
+			} else {
+				// TODO : check for hash change
+				currentData = data;
+				console.log(" - loaded previously saved data: "+JSON.stringify(currentData));
+			}
+		});
 	}
-	var hashedContent = generateContentHash();
-	console.log("genrated content hash using MD5 algorithm: "+hashedContent);
-	console.log(" - page url: "+url);
-	currentData = {
-		url: url,
-		hashedContent: hashedContent,
-		highlights: []
-	};
-	getDataForUrl(url, function(data) {
-		console.log(" - got data");
-		if (data == null) {
-			console.log(" - first time data save: "+JSON.stringify(currentData));
-			updateData(currentData, function(err) {
-				console.log(" - error in save: "+err.message);
-			});
-		} else {
-			// TODO : check for hash change
-			currentData = data;
-			console.log(" - loaded previously saved data: "+JSON.stringify(currentData));
-		}
-	});
 }
 
-function urlToCleanB64(url) {
-	return btoa(url).replace(alphanumOnlyRegex, "");
+
+/*
+ * Local data save and load functions
+ */
+
+/*
+ * Translates a string to Base64 encoding and removes any non-alphanumeric characters, i.e. the expected "=" sign(s) at end of encoded string
+ */
+function strToCleanB64(str) {
+	return btoa(str).replace(alphanumOnlyRegex, "");
 }
 
-function getDataForUrl(url, onGot) {
-	console.log(" - - get data for url: "+url);
-	var key = urlToCleanB64(url);
-	console.log(" - - key: "+key);
+/*
+ * Pull data from local storage by key
+ */
+function getData(key, onGot) {
+	//var actualKey = strToCleanB64(key);
 	var gettingItem = browser.storage.local.get(key);
-	console.log(" - - getting item object created");
   	gettingItem.then((res) => {
   		onGot(res[key]);
   	});
 }
 
-function updateData(data, onError) {
-	console.log(" - - update data: "+JSON.stringify(data));
-	var jsonAsStr = "{\""+urlToCleanB64(data.url)+"\": "+JSON.stringify(data)+"}";
-	console.log(" - - jsonAsStr: "+jsonAsStr);
+/*
+ * Save / update data for a key
+ */
+function updateData(key, data, onError) {
+	var jsonAsStr = "{\""+key+"\": "+JSON.stringify(data)+"}";
 	var jsonAsObj = JSON.parse(jsonAsStr);
 	var storing = browser.storage.local.set(jsonAsObj);
 	storing.then(null, onError);
 }
 
+
+
 /*
-Do marking using Mark.js
-*/
+ * Edit mode functions
+ */
+
+/*
+ * Set up editmode
+ */
 function startEditMode() {
   alert("MarkPage started")
-  document.body.addEventListener("mouseup", captureTextIfExists, true);	
-  //document.body.onmouseup = captureTextIfExists();
+  document.body.addEventListener("mouseup", handleTextSelection, true);	
 }
 
-function captureTextIfExists() {
+/*
+ * Detect text selection, pull text and mark up with highlight
+ *
+ * TODO : add highlights to currentData object, with reference to extractedContent
+ */
+function handleTextSelection() {
 	var selectedText = "";
 	var selectedNode;
 	if (window.getSelection) {
@@ -201,40 +251,28 @@ function captureTextIfExists() {
 	}
 }
 
-function resetData() {
-	alert("Page content has changed! Highlighting has been reset and saved highlight cannot be used in this version, please re-highlight. Note, highlight migration between content versions is planned feature, see https://github.com/digithree/markpage");
-	if (markedInstancesWrappers != null) {
-		for (var i = 0 ; i < markedInstancesWrappers.length ; i++) {
-			if (markedInstancesWrappers[i] != null) {
-				markedInstancesWrappers[i].unmark();
-			}
-		}
-		markedInstancesWrappers = [];
-	}
-}
-
-
-function generateContentHash() {
-	if (extractedContent == null || extractedContent.length == 0) {
-		console.log("generateContentHash: no extractedContent available");
-		return "0";
-	}
-	console.log("generateContentHash: extractedContent length = "+extractedContent.length);
-	return calcMD5(extractedContent);
-}
 
 /*
-Assign onMessage() as a listener for messages from the extension.
-*/
-browser.runtime.onMessage.addListener(message);
+ * Library functions
+ */
 
-function getActiveTab() {
-  return browser.tabs.query({active: true, currentWindow: true});
+/*
+ * generates content hash from extractedContent, using MD5 algorithm
+ */
+function generateContentHash() {
+	if (extractedContent == null || extractedContent.length == 0) {
+		return "0";
+	}
+	return calcMD5(extractedContent);
 }
 
 
 /*
  * The MD5 Hashing algorithm below was copied on 16.12.30 from http://www.queness.com/code-snippet/6523/generate-md5-hash-with-javascript
+ *
+ * The only modifications were to the superficial formatting, and adding explicit "var" declarations for new variables, as is required for
+ * WebExtension JavaScript style.
+ *
  * The license as available at http://pajhome.org.uk/site/legal.html is copied here in full:
  *
  * The JavaScript code implementing the algorithm is derived from the C code in RFC 1321 and is covered by the following copyright:
