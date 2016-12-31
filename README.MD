@@ -1,6 +1,6 @@
 # MarkPage
 
-v0.2
+v0.3
 
 <img src="/icons/markpage.png" alt="MarkPage logo" style="width: 200px; height: 200px"/>
 
@@ -12,18 +12,19 @@ The concept is to allow for webpages to be highlighted in a simple way that does
 
 ## Feature roadmap
 
-1. (in progress) Text highlighting
-2. (in progress) Save highlights locally
+1. (finished, basic) Text highlighting
+2. (finished, basic) Save highlights locally
 3. (no progress) Save highlights remotely
-
-In detail
 
 ### Text highlighting
 
 1. Highlight text robustly, in the main body of text content for a webpage, in multiple colors.
 2. Highlights should be editable only via a delete operation, to keep the interface as simple as possible.
 
-Perhaps we should allow comments to be added to highlights, or tags or other mark-up.
+**Planned**
+
+1. Allow colour selection to be changed, or even customised to any color
+2. Allow comments to be added to highlights, or tags or other mark-up
 
 ### Save highlights locally
 
@@ -32,9 +33,11 @@ Use content extraction on webpage to support several key features:
 1. Save highlighted text as character offsets within the content extracted text body. In this way we can store data about the content which is not the content, and is not reversible into the content.
 2. Create a hash of the extracted content. This will allow us to detect versioning and invalidate the highlights if a change has been made to the document. As a side note, this will also alert MarkPage users if a change has been made.
 
-Content extraction is not implemented yet, and in the selection of the library it must be very deterministic and stable over time, i.e. it should output the exact same characters if there has been no change in the body of the document.
+Content extraction relies on access to a [markpage-server](https://github.com/digithree/markpage-server), which itself is dependent on the [node-unfluff](https://github.com/ageitgey/node-unfluff) content extraction library for Node.js. I have a markpage-server running on Heroku at [https://markpage-server.herokuapp.com/](https://markpage-server.herokuapp.com/) for the purposes of this library. I encourage you to checkout the GitHub page for the server project also.
 
-Also note that it would be great to use some kind of ```git diff``` style difference detection to migrate highlights if the document does change.
+**Planned**
+
+1. Migrate highlights if the webpage content changes. Otherwise, if a page is editted, even slightly (think of Wikipedia!) it will break highlights. Highlights are stored with the extracted content hash as a key to facilitate this, but it's not yet implemented.
 
 ### Save highlights remotely
 
@@ -60,6 +63,8 @@ Once installed you will see the [MarkPage logo](/icons/markpage-48.png) in your 
 
 ### Using
 
+#### Making a highlight
+
 Any text you select will be automatically highlighted, if it passes the two conditions:
 
 1. The total selected character count is 10 or more
@@ -69,25 +74,29 @@ These restrictions are intended to restrict usage to select sentences or sentenc
 
 The highlight color will cycle through 5 different colours automatically, for testing purposes, and is not editable or controllable.
 
-## Known issues
+#### Editing a highlight
 
-### Text selection
+Currently, you can only delete a highlight. Click on any highlight and you will be prompted to confirm you wish to delete it.
 
-Mark.js uses a regex based system for highlighting or if there is an identical sentence existing to an intentionally highlighted one, it will also be highlighted. This is what the sentence restrictions are in place to combat.
+## Issue
 
-If there are overlapping you should expect undefined behaviour. This should probably be checked against and not allowed to occur.
+There are some known issues which are being tracked in the GitHub issue tracker.
+
+Please feel free to test out the plugin and log bugs. At this early stage there should be plenty, but don't let that stop you!
 
 ## Acknowledgements
 
-Highlighting is provided by Mark.js, which is included as part of the main content script file [markpage.js](/content_scripts/markpage.js), i.e. the JavaScript file injected into the webpage. Marj.js is under thew MIT license, same as this project.
+Highlighting is provided by Mark.js, which is included as part of the main content script file [markpage.js](/content_scripts/markpage.js), i.e. the JavaScript file injected into the webpage. Mark.js is under the MIT license, same as this project.
 
 Loading spinner gif used is Ajax-loader.gif, obtained from [https://commons.wikimedia.org/wiki/File:Ajax-loader.gif](https://commons.wikimedia.org/wiki/File:Ajax-loader.gif) and licensed as public domain.
 
 ## Changelog
 
+*16.12.31 - v0.3.0*
+- Highlights can be deleted by clicking them and confirming the action in a pop-up alert
+
 *16.12.31 - v0.2.0*
 - Save highlights to local storage (as reference to text position in extracted content only) and load from saved data
-- Local highlighting in a basic form is now complete, though the delete operation has yet to be implemented
 
 *16.12.31 - v0.1.2*
 - Implement local storage of webpage data, including url and extracted content hash, as well as highlight array which is not yet used
