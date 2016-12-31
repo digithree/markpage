@@ -20,6 +20,7 @@ browser.runtime.onMessage.addListener(message);
 var alphanumOnlyRegex = new RegExp("([^a-zA-Z0-9])+");
 
 var markedInstancesWrappers = [];
+var markedInstancesWrappersUniqueInstanceCount = 0;
 
 var highlightColors = [
  	"#FF9999",
@@ -189,8 +190,63 @@ function updateData(key, data, onError) {
  * Set up editmode
  */
 function startEditMode() {
-  alert("MarkPage started")
-  document.body.addEventListener("mouseup", handleTextSelection, true);	
+  alert("MarkPage started");
+  document.body.addEventListener("mouseup", handleTextSelection, true);
+  document.body.addEventListener("click", (e) => {
+  	if (extractedContent == null || currentData == null
+  		|| currentData.highlights.length < 1) {
+  		return;
+  	}
+  	console.log("*** body click event: "+e.target.tagName);
+  	if (e.target.tagName.localeCompare("mark")) { //e.target.classList.contains("markedhighlight")
+  		var elementText = e.target.innerText || e.target.textContent;
+  		var highlight;
+  		var highlightText = "";
+  		// we have to search the stored highlights to see if they contain a part of
+  		// the text in the text element, as the clicked element may contain only
+  		// part of the text, it's likely to exist across elements
+  		// this is probably not always going to be accurate though, but should work
+  		// most of the time
+  		// TODO : improve this matching
+  		for (var i = 0 ; i < currentData.highlights.length ; i++) {
+  			var text = extractedContent.substring(currentData.highlights[i].start,
+  				currentData.highlights[i].start + currentData.highlights[i].len);
+  			if (text.length > 0 && text.search(elementText) >= 0) {
+  				highlight = currentData.highlights[i];
+  				highlightText = text;
+  				break;
+  			}
+  		}
+  		if (highlightText.length > 0) {
+	  		var response = confirm("Do you want to remove this highlighted text: \""+highlightText+"\" ?");
+			if (response == true) {
+				// unmark highlight on webpage
+				console.log("unmarking highlight on webpage");
+				for (var i = 0 ; i < markedInstancesWrappers.length ; i++) {
+					if (markedInstancesWrappers[i].text.localeCompare(highlightText) == 0) {
+						markedInstancesWrappers[i].mark.unmark({className: markedInstancesWrappers[i].className});
+						markedInstancesWrappers[i].mark = null;
+						markedInstancesWrappers[i].text = "";
+					}
+				}
+				// remove highlight from currentData.highlights using filter
+				console.log("removing highlight from currentData");
+				currentData.highlights = currentData.highlights.filter(function(el) {
+				    return el.start !== highlight.start;
+				});
+				// save updated currentData
+				updateData(currentData.hashedContent, currentData, function(err) {
+					console.log(" - error in save: "+err.message);
+				});
+				console.log("highlight removed");
+			} else {
+				console.log("deleting highlight is cancelled");
+			}
+		} else {
+			console.log("Error retrieving highlight text from live storage");
+		}
+  	}
+  });
 }
 
 /*
@@ -258,30 +314,18 @@ function highlightText(selectedText) {
 	console.log("* begin highlighting text: "+selectedText);
 	// TODO : this might be risky as is for entire document. should be okay if highlighting fairly unique text
 	var rootNode = document.body;
-	var markedInstance;
-	console.log("searching for markjs instance for root node: "+rootNode.toString());
-	for (var i = 0; i < markedInstancesWrappers.length; i++) {
-		var inst = markedInstancesWrappers[i];
-		console.log("-- reading instance: "+inst.toString());
-		if (inst.root == rootNode) {
-			markedInstance = inst.mark;
-			console.log("-- -- found markjs instance");
-			break;
-		} else {
-			console.log("-- -- no match for root node: "+inst.root);
-		}
-	}
-	if (markedInstance == null) {
-		markedInstance = new Mark(rootNode);
-		markedInstancesWrappers.push({
-			mark: markedInstance,
-			root: rootNode
-		});
-		console.log("created new markjs instance for root node: "+rootNode.toString()+" and pushed to list");
-	}
+	var className = "mark_"+(markedInstancesWrappersUniqueInstanceCount++);
+	var markedInstance = new Mark(rootNode);
+	markedInstancesWrappers.push({
+		mark: markedInstance,
+		text: selectedText,
+		className: className
+	});
+	console.log("created new markjs instance for root node: "+rootNode.toString()+" and pushed to list");
 	console.log("list size is "+markedInstancesWrappers.length);
 	highlightColorIdx = (highlightColorIdx + 1) % highlightColors.length;
 	markedInstance.mark(selectedText, {
+		className: className,
 		separateWordSearch: false,
 		acrossElements: true,
 		"each": function(element) {
