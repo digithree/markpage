@@ -71,6 +71,7 @@ function loadData(data) {
 	var resJson = JSON.parse(data);
 	var b64 = resJson.data;
 	extractedContent = atob(b64);
+	console.log("extractedContent: "+extractedContent);
 }
 
 /*
@@ -121,9 +122,27 @@ function checkLocalData(url) {
 			} else {
 				// TODO : check for hash change
 				currentData = data;
+				markSavedHighlights();
 				console.log(" - loaded previously saved data: "+JSON.stringify(currentData));
 			}
 		});
+	}
+}
+
+/*
+markSavedHighlights():
+* Mark highlights saved in currentData
+*/
+function markSavedHighlights() {
+	if (currentData == null) {
+		return;
+	}
+	for (var i = 0 ; i < currentData.highlights.length ; i++) {
+		var highlight = currentData.highlights[i];
+		var text = extractedContent.substring(highlight.start, highlight.start + highlight.len);
+		if (text.length > 0) {
+			highlightText(text);
+		}
 	}
 }
 
@@ -204,53 +223,74 @@ function handleTextSelection() {
 			console.log("hightlighting rejected: too short, < 3 spaces, has "+spaces.length);
 			return;
 		}
-		console.log("* begin highlighting text: "+selectedText);
-		var parent = selectedNode.anchorNode;
-		while (parent != null && parent.localName != "div") {
-			parent = parent.parentNode;
+
+		// search for selectedText in extractedContent
+		var firstIdx = extractedContent.search(selectedText);
+		if (firstIdx < 0) {
+			// text was not found
+			console.log("text \""+selectedText+"\" not found in extractedContent, cannot highlight");
+			alert("Can't match selected text in extracted content! This is either because the text you highlighted is not in the main content, or because of a bug!");
+			return;
 		}
-		if (parent != null) {
-			console.log("parent local name: "+parent.localName);
-		} else {
-			console.log("no parent found for selection: "+selectedText);
-		}
-		//return parent.innerText || parent.textContent;
-		var markedInstance;
-		var rootNode = parent != null ? parent : selectedNode.anchorNode;
-		console.log("searching for markjs instance for root node: "+rootNode.toString());
-		for (var i = 0; i < markedInstancesWrappers.length; i++) {
-			var inst = markedInstancesWrappers[i];
-			console.log("-- reading instance: "+inst.toString());
-			if (inst.root == rootNode) {
-				markedInstance = inst.mark;
-				console.log("-- -- found markjs instance");
-				break;
-			} else {
-				console.log("-- -- no match for root node: "+inst.root);
-			}
-		}
-		if (markedInstance == null) {
-			markedInstance = new Mark(rootNode);
-			markedInstancesWrappers.push({
-				mark: markedInstance,
-				root: rootNode
-			});
-			console.log("created new markjs instance for root node: "+rootNode.toString()+" and pushed to list");
-		}
-		console.log("list size is "+markedInstancesWrappers.length);
-		highlightColorIdx = (highlightColorIdx + 1) % highlightColors.length;
-		markedInstance.mark(selectedText, {
-			separateWordSearch: false,
-			acrossElements: true,
-			"each": function(element) {
-				console.log(" - setting background "+highlightColors[highlightColorIdx]+" for "+element.toString());
-				element.style.backgroundColor = highlightColors[highlightColorIdx];
-			}
+		// create highlight object and add to currentData
+		var highlight = {
+			start: firstIdx,
+			len: selectedText.length
+		};
+		console.log("created highlight object: "+JSON.stringify(highlight));
+		currentData.highlights.push(highlight);
+		console.log("added to currentData, which is now: "+JSON.stringify(currentData));
+		// and save
+		updateData(currentData.hashedContent, currentData, function(err) {
+			console.log(" - error in save: "+err.message);
 		});
-		console.log("*** *** ***");
+
+		// continue to highlight selectedText visually on webpage
+		highlightText(selectedText);
 	}
 }
 
+/*
+highlightText(selectedText):
+* Mark selectedText as highlighted on webpage
+*/
+function highlightText(selectedText) {
+	console.log("* begin highlighting text: "+selectedText);
+	// TODO : this might be risky as is for entire document. should be okay if highlighting fairly unique text
+	var rootNode = document.body;
+	var markedInstance;
+	console.log("searching for markjs instance for root node: "+rootNode.toString());
+	for (var i = 0; i < markedInstancesWrappers.length; i++) {
+		var inst = markedInstancesWrappers[i];
+		console.log("-- reading instance: "+inst.toString());
+		if (inst.root == rootNode) {
+			markedInstance = inst.mark;
+			console.log("-- -- found markjs instance");
+			break;
+		} else {
+			console.log("-- -- no match for root node: "+inst.root);
+		}
+	}
+	if (markedInstance == null) {
+		markedInstance = new Mark(rootNode);
+		markedInstancesWrappers.push({
+			mark: markedInstance,
+			root: rootNode
+		});
+		console.log("created new markjs instance for root node: "+rootNode.toString()+" and pushed to list");
+	}
+	console.log("list size is "+markedInstancesWrappers.length);
+	highlightColorIdx = (highlightColorIdx + 1) % highlightColors.length;
+	markedInstance.mark(selectedText, {
+		separateWordSearch: false,
+		acrossElements: true,
+		"each": function(element) {
+			console.log(" - setting background "+highlightColors[highlightColorIdx]+" for "+element.toString());
+			element.style.backgroundColor = highlightColors[highlightColorIdx];
+		}
+	});
+	console.log("*** *** ***");
+}
 
 /*
  * Library functions
